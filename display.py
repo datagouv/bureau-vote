@@ -96,7 +96,7 @@ def prepare_layer_polygons(geo_addresses: gpd.GeoDataFrame, communes: gpd.GeoDat
         
     elif mode == "voronoi":
         hulls = geo.voronoi_hull(geo_addresses)
-        hulls = geo.merge_voronoi_hull_or_ignore(hulls)
+        hulls = geo.connected_components_polygon_union(hulls)
         # TODO is is really the right place for this computing and clipping?
         if len(communes):
             hulls = geo.clip_to_communes(hulls, communes)

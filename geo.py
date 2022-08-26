@@ -3,6 +3,7 @@ import os
 import numpy as np
 import geopandas as gpd
 import pytess
+from typing import List
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
@@ -126,41 +127,85 @@ def clip_to_communes(gdf: gpd.GeoDataFrame, communes: gpd.GeoDataFrame):
     return gdf_copy
 
 
-def merge_voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    geometries, citycodes, id_bvs = [], [], []
-    for id_bv in gdf.id_bv.unique():
-        citycode = gdf[gdf.id_bv == id_bv].result_citycode.min()
-        s = gdf[gdf.id_bv == id_bv].geometry
+def polygon_union(gdf: gpd.GeoDataFrame, pivot_column:str="id_bv", columns:List[str]=["result_citycode"]) -> gpd.GeoDataFrame:
+    """
+    Assuming the geometry of the input GeoDataFrame geometry consists of polygons, make the union of these polygons given a pivot column. 
+    Some columns of the input GeoDataFrame can be kept in the output, under the assumption that :
+    (i) for a given pivot value, and a given column of "columns", the value of the column on this pivot value stays constant 
+
+    Args:
+        gdf (gpd.GeoDataFrame): must contain the column `pivot_column` and the ancillary columns `columns` 
+        pivot_column (str): the column that must be used as pivot. Defaults to "id_bv".
+        columns (List[str], optional): The list of other columns (not `pivot_column` nor "geometry") to keep in the output. Defaults to ["result_citycode"].
+
+    Returns:
+        gpd.GeoDataFrame: consists of the geometry of merged polygons (that are Polygon or MultiPolygon), `pivot_column` and the ancillary columns `columns` 
+    """
+    geometries = list()
+    # "data" consists of the properties of the output GeoDataFrame
+    data = {pivot_column: []}
+    for column in columns:
+        data[column] = list()
+        
+    for pivot in gdf[pivot_column].unique():
+        # WARNING: the 2 lines below assumes that, for a given pivot value, and a given column of "columns", the value of the column on this pivot value stays constant
+        # in particular, it is right for the column "result_citycode" when the union is done on "id_bv")
+        for column in columns:
+            val = gdf[gdf[pivot_column] == pivot][column].min()
+            data[column].append(val)
+        s = gdf[gdf[pivot_column] == pivot].geometry
         geometries.append(
             s.unary_union
         )
-        id_bvs.append(id_bv)
-        citycodes.append(citycode)
-        
-    return gpd.GeoDataFrame(geometry=geometries, data={"id_bv":id_bvs, "result_citycode": citycodes})
+        data[pivot_column].append(pivot)
+    return gpd.GeoDataFrame(geometry=geometries, data=data)
 
-def merge_voronoi_hull_or_ignore(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    # When two voronoi belongs to the same bureau de vote, merge them... except if the merged form is not connex (then the type would be a "MultiPolygon", and pydeck can't manage it)
-    geometries, citycodes, id_bvs = [], [], []
-    for id_bv in gdf.id_bv.unique():
-        citycode = gdf[gdf.id_bv == id_bv].result_citycode.min()
-        s = gdf[gdf.id_bv == id_bv].geometry
+
+def connected_components_polygon_union(gdf: gpd.GeoDataFrame, pivot_column:str="id_bv", columns:List[str]=["result_citycode"]) -> gpd.GeoDataFrame:
+    """
+    Assuming the geometry of the input GeoDataFrame geometry consists of polygons, return the connected components of the union of these polygons given a pivot column
+    Some columns of the input GeoDataFrame can be kept in the output, under the assumption that :
+    (i) for a given pivot value, and a given column of "columns", the value of the column on this pivot value stays constant 
+
+    Args:
+        gdf (gpd.GeoDataFrame): must contain the column `pivot_column` and the ancillary columns `columns` 
+        pivot_column (str): the column that must be used as pivot. Defaults to "id_bv".
+        columns (List[str], optional): The list of other columns (not `pivot_column` nor "geometry") to keep in the output. Defaults to ["result_citycode"].
+
+    Returns:
+        gpd.GeoDataFrame: consists of the geometry of merged connected components (that are necessary Polygon), `pivot_column` and the ancillary columns `columns` 
+    """
+    geometries = list()
+    # "data" consists of the properties of the output GeoDataFrame
+    data = {pivot_column: []}
+    for column in columns:
+        data[column] = list()
+        
+    for pivot in gdf[pivot_column].unique():
+        # WARNING: the 2 lines below assumes that, for a given pivot value, and a given column of "columns", the value of the column on this pivot value stays constant
+        # in particular, it is right for the column "result_citycode" when the union is done on "id_bv")
+        s = gdf[gdf[pivot_column] == pivot].geometry
         merged_shape = s.unary_union
         if merged_shape.type == "Polygon":
             geometries.append(
                 merged_shape
             )
-            citycodes.append(citycode)
-            id_bvs.append(id_bv)
+            data[pivot_column].append(pivot)
+            for column in columns:
+                val = gdf[gdf[pivot_column] == pivot][column].min()
+                data[column].append(val)
         elif merged_shape.type == "MultiPolygon":
-            for _, row in gdf[gdf.id_bv == id_bv].iterrows():
-                geometries.append(row["geometry"])
-                id_bvs.append(id_bv)
-                citycodes.append(citycode)
-                
-            
-    return gpd.GeoDataFrame(geometry=geometries, data={"id_bv":id_bvs, "result_citycode": citycodes})
+            for _, row in gpd.GeoDataFrame(
+                geometry=[merged_shape]
+            ).explode(index_parts=False).iterrows():
 
+                geometries.append(row["geometry"])
+                data[pivot_column].append(pivot)
+                for column in columns:
+                    val = gdf[gdf[pivot_column] == pivot][column].min()
+                    data[column].append(val)
+
+    return gpd.GeoDataFrame(geometry=geometries, data=data)
 
 
 def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
