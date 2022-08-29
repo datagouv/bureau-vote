@@ -90,11 +90,23 @@ def remove_names(x: str) -> str:
             return ''
         else:
             return x
+        
+        
+def clean_geocoded_types(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Clean some types of the dataframe after the geocoding step
+    """
+    geocoded_df = df.copy()
+    geocoded_df["latitude"] = geocoded_df["latitude"].astype(float)
+    geocoded_df["longitude"] = geocoded_df["longitude"].astype(float)
+    geocoded_df["result_score"] = geocoded_df["result_score"].astype(float)
+    geocoded_df = geocoded_df[geocoded_df["result_label"].notna()]
+    return geocoded_df
+
             
 def clean_failed_geocoding(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Remove lines where the voter does not inhabit in the commune, and also remove lines where 
-    the geocoding is not consistent with the postcode indicated in the INSEE file
+    Remove both failed geocoding (geocoding score below a threshold) + also remove lines where the voter does not inhabit in the same code commune + also remove lines where the geocoding is not consistent with the postcode indicated in the INSEE file
 
     Args:
         df (pd.DataFrame): a dataframe where geocoding has already been performed with API-adresse
@@ -102,9 +114,9 @@ def clean_failed_geocoding(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: a cleaned subset of this dataframe
     """
-    assert "result_postcode" in df.columns and "CP" in df.columns and "CP_BV" in df.columns, "the dataframe does not include required columns for cleaning"
+    assert "result_score" in df.columns and "result_postcode" in df.columns and "CP" in df.columns and "CP_BV" in df.columns and "result_citycode" in df.columns and "Code communeRéférentiel" in df.columns, "the dataframe does not include required columns for cleaning"
     # the comparison is performed on column "result_postcode" (because there is no citycode in INSEE input file) but other functions will only refer to "result_citycode" (because it is a good practice to prefer this column)
-    return df[(df.result_postcode == df.CP) & (df.result_postcode == df.CP_BV)].dropna(subset=["CP", "result_citycode", "CP_BV"])
+    return df[(df.result_score > 0.5) & (df.result_citycode == df["Code communeRéférentiel"]) & (df.result_postcode == df.CP)].dropna(subset=["CP", "result_citycode", "result_postcode"])
 
 
 def get_address(row) -> str:
