@@ -130,8 +130,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>df.drop(columns<span class="op">=</span>[<span class="st">'libelle_voie_clean'</span>, <span class="st">'comp_adr_1_clean'</span>, <span class="st">'comp_adr_2_clean'</span>, <span class="st">'lieu-dit-clean'</span>], inplace<span class="op">=</span><span class="va">True</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell" data-scrolled="true">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>geocoded_df <span class="op">=</span> geo.add_geoloc(df<span class="op">=</span>df)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#geocoded_df = pd.read_csv("concat_adr_bv_geocoded.csv",dtype=str)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#geocoded_df = geo.add_geoloc(df=df)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>geocoded_df <span class="op">=</span> pd.read_csv(<span class="st">"concat_adr_bv_geocoded.csv"</span>,dtype<span class="op">=</span><span class="bu">str</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <section id="clean-geocoded-dataframe" class="level2">
 <h2 class="anchored" data-anchor-id="clean-geocoded-dataframe">Clean geocoded dataframe</h2>
@@ -167,23 +167,22 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <section id="save-geojson-with-1-point-per-voter-address" class="level2">
 <h2 class="anchored" data-anchor-id="save-geojson-with-1-point-per-voter-address">Save GeoJSON (with 1 Point per voter address)</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">#geojson = geo.build_geojson_point(geocoded_df)</span></span>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># geojson = geo.build_geojson_point(geocoded_df)</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co">#geojson.to_file("bv_point.geojson", driver="GeoJSON")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="display-convex-hull" class="level2">
 <h2 class="anchored" data-anchor-id="display-convex-hull">Display convex Hull</h2>
 <div class="cell" data-scrolled="true">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>r_hulls <span class="op">=</span> display.display_hulls(addresses<span class="op">=</span>geocoded_df, communes<span class="op">=</span>communes_ariege, mode<span class="op">=</span><span class="st">"hull"</span>)</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>r_hulls.to_html(<span class="st">"hull_layer.html"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># r_hulls = display.display_bureau_vote_shapes(addresses=geocoded_df, communes=communes_ariege, mode="convex")</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co"># r_hulls.to_html("hull_layer.html")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="display-voronoi-tessellation" class="level2">
 <h2 class="anchored" data-anchor-id="display-voronoi-tessellation">Display Voronoi tessellation</h2>
 <div class="cell" data-scrolled="true">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>r_voronoi <span class="op">=</span> display.display_hulls(addresses<span class="op">=</span>geocoded_df, communes<span class="op">=</span>communes_ariege, mode<span class="op">=</span><span class="st">"voronoi"</span>)</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>r_voronoi.to_html(<span class="st">"voronoi_layer.html"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>r_voronoi <span class="op">=</span> display.display_bureau_vote_shapes(addresses<span class="op">=</span>geocoded_df, communes<span class="op">=</span>communes_ariege, mode<span class="op">=</span><span class="st">"voronoi"</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>r_voronoi.to_html(<span class="st">"voronoi_layer.html"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 
