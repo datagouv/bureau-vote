@@ -1,0 +1,5 @@
+geopandas==0.11.1
+pandas==1.5.0
+pydeck==0.7.1
+Pytess==1.0.0
+requests==2.28.1
