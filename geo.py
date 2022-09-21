@@ -8,6 +8,7 @@ import geopandas as gpd
 import pytess
 from typing import List
 from shapely.geometry import Polygon
+import requests
 
 
 def add_geoloc(df: pd.DataFrame) -> pd.DataFrame:
@@ -21,9 +22,17 @@ def add_geoloc(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: a dataframe with the input columns, and also latitudes, longitudes, result_postcode, result_citycode, etc.
     """
     df.to_csv("concat_adr_bv.csv", index=False)
-    os.system(
-        "curl -X POST -F data=@concat_adr_bv.csv -F columns=adr_complete -F columns=Commune -F postcode=CP https://api-adresse.data.gouv.fr/search/csv/ > concat_adr_bv_geocoded.csv"
-    )
+    # os.system(
+    #     "curl -X POST -F data=@concat_adr_bv.csv -F columns=adr_complete -F columns=Commune -F postcode=CP https://api-adresse.data.gouv.fr/search/csv/ > concat_adr_bv_geocoded.csv"
+    # )
+    f = open('concat_adr_bv.csv', 'rb')
+    files = {'data': ('concat_adr_bv', f)}
+    payload = {'columns': ['adr_complete', 'Commune'], 'postcode': 'CP'}
+    r = requests.post('https://api-adresse.data.gouv.fr/search/csv/', files=files, data=payload, stream=True)
+    with open('concat_adr_bv_geocoded.csv', 'wb') as fd:
+        for chunk in r.iter_content(chunk_size=1024):
+            fd.write(chunk)
+
     geocoded = pd.read_csv("concat_adr_bv_geocoded.csv", dtype=str)
     geocoded["latitude"] = geocoded["latitude"].astype(float)
     geocoded["longitude"] = geocoded["longitude"].astype(float)
