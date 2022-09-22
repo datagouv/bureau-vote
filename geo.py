@@ -252,7 +252,7 @@ def connected_components_polygon_union(
         s = gdf[
             gdf[pivot_column] == pivot
         ].geometry  # normally these shapes are Polygon, but could be Point if there is only one found voter in a bureau de vote
-        if s.type == "Point":
+        if len(s) == 1 and s.iloc[0].type == "Point":
             geometries.append(s)
             save_columns_values(pivot)
         else:
