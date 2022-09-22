@@ -24,7 +24,7 @@ if __name__ == '__main__':
     df.drop(columns=['libelle_voie_clean', 'comp_adr_1_clean', 'comp_adr_2_clean', 'lieu-dit-clean'], inplace=True)
     print('### Dataset Cleaned!')
     # Comment if you want to skip geocode stp (this step takes few minutes to run)
-    geocoded_df = geo.add_geoloc(df=df)
+    geocoded_df = add_geoloc(df=df)
     print('### Dataset geocoded!')
     geocoded_df = pd.read_csv("concat_adr_bv_geocoded.csv",dtype=str)
     #Clean geocoded dataframe
