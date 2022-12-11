@@ -6,8 +6,8 @@ that have been previously geocoded with the "geo" module.
 import pandas as pd
 from difflib import SequenceMatcher
 import re
-
-
+    
+    
 def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     """
     Put fields of strings in lowercase and remove the names of persons from the dataset
@@ -27,20 +27,17 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
             "Lieu-dit  ": "lieu-dit",
             "Code commune\nRéférentiel": "Code communeRéférentiel",
             "Libellé commune\nRéférentiel": "Libellé communeRéférentiel",
-        }
+        },
+        errors="ignore"
     )
-    df["num_voie"] = df["num_voie"].str.lower()
-    df["libelle_voie"] = df["libelle_voie"].str.lower()
-    df["comp_adr_1"] = df["comp_adr_1"].str.lower()
-    df["comp_adr_2"] = df["comp_adr_2"].str.lower()
-    df["lieu-dit"] = df["lieu-dit"].str.lower()
-
-    df["num_voie_clean"] = df["num_voie"].apply(lambda x: remove_names(str(x)))
-    df["libelle_voie_clean"] = df["libelle_voie"].apply(lambda x: remove_names(str(x)))
-    df["comp_adr_1_clean"] = df["comp_adr_1"].apply(lambda x: remove_names(str(x)))
-    df["comp_adr_2_clean"] = df["comp_adr_2"].apply(lambda x: remove_names(str(x)))
-    df["lieu-dit-clean"] = df["lieu-dit"].apply(lambda x: remove_names(str(x)))
-    df["adr_complete"] = df.apply(lambda row: get_address(row), axis=1)
+    for col in ["num_voie", "libelle_voie", "comp_adr_1", "comp_adr_2", "lieu-dit"]:
+        try:
+            df[col] = df[col].str.lower()
+            df[f"{col}_clean"] = df[col].str.lower()
+        except:
+            continue
+    if not "geo_adresse" in df.columns:
+        df["geo_adresse"] = df.apply(lambda row: get_address(row), axis=1)
     return df
 
 
@@ -170,25 +167,25 @@ def get_address(row) -> str:
         str: the address
     """
 
-    def similar(a: str, b: str):  # return a measure of similarity
+    def similar(a: str, b: str) -> float:  # return a measure of similarity
         return SequenceMatcher(None, a, b).ratio()
 
-    address = (
-        str(row["num_voie_clean"])
-        + " "
-        + str(row["libelle_voie_clean"])
-        + " "
-        + str(row["comp_adr_1_clean"])
-        + " "
-        + str(row["comp_adr_2_clean"])
-    )
+    address = ""
+    
+    for col in ["num_voie_clean", "libelle_voie_clean", "comp_adr_1_clean", "comp_adr_2_clean"]:
+        try:
+            address += str(row[col]) + " "
+        except:
+            continue
 
-    if (similar(str(address), str(row["lieu-dit-clean"]).lower()) > 0.7) | (
+    if not "lieu-dit-clean" in row:
+        return address.strip()
+    elif (similar(str(address), str(row["lieu-dit-clean"]).lower()) > 0.7) | (
         str(row["lieu-dit-clean"]).lower() == "nan"
     ):
-        return str(address)
+        return address.strip()
     else:
-        return str(address) + " " + str(row["lieu-dit-clean"]).lower()
+        return (address + " " + str(row["lieu-dit-clean"]).lower()).strip()
 
 
 def prepare_ids(df: pd.DataFrame) -> pd.DataFrame:

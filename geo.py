@@ -16,7 +16,7 @@ def add_geoloc(df: pd.DataFrame) -> pd.DataFrame:
     Locally save the raw base of addresses and call the API-adresse to geocode them (in particular: add coordinates and found city)
 
     Args:
-        df (pd.DataFrame): a file with columns "adr_complete" (street number + street type + street name/locality name), "Commune" (commune name), "CP" (postcode)
+        df (pd.DataFrame): a file with columns "geo_adresse" ((street number +) street type + street name/locality name), "Commune" (commune name), "CP" (postcode)
 
     Returns:
         pd.DataFrame: a dataframe with the input columns, and also latitudes, longitudes, result_postcode, result_citycode, etc.
@@ -27,7 +27,7 @@ def add_geoloc(df: pd.DataFrame) -> pd.DataFrame:
     # )
     f = open('concat_adr_bv.csv', 'rb')
     files = {'data': ('concat_adr_bv', f)}
-    payload = {'columns': ['adr_complete', 'Commune'], 'postcode': 'CP'}
+    payload = {'columns': ['geo_adresse', 'Commune'], 'postcode': 'CP'}
     r = requests.post('https://api-adresse.data.gouv.fr/search/csv/', files=files, data=payload, stream=True)
     with open('concat_adr_bv_geocoded.csv', 'wb') as fd:
         for chunk in r.iter_content(chunk_size=1024):
@@ -53,12 +53,20 @@ def build_geojson_point(addresses: pd.DataFrame) -> gpd.GeoDataFrame:
     """
 
     geojson = {"type": "FeatureCollection", "features": []}
+    if "result_label" in addresses.columns:
+        label_col = "result_label"
+    else:
+        label_col = "commune_bv"
+    if "result_citycode" in addresses.columns:
+        code_col = "result_citycode"
+    else:
+        code_col = "code_commune_ref"
     for _, row in addresses.iterrows():
-        if row["result_label"]:
+        if row[label_col]:
             props = {
-                "label": row["result_label"],
+                "label": row[label_col],
                 "id_bv": row["id_bv"],
-                "result_citycode": row["result_citycode"],
+                "result_citycode": row[code_col],
             }
             geojson["features"].append(
                 {
@@ -142,12 +150,16 @@ def clip_to_communes(
     gdf_copy = gdf.copy()
     multipolygons_communes_dict = {}
     multipolygons_communes_list = list()
+    if "result_citycode" in communes.columns:
+        code_col = "result_citycode"
+    else:
+        code_col = "insee"
     # precompute the MultiPolygon of each of the commune that is relevant for our input geodataframe
     for cp in np.intersect1d(
-        communes.result_citycode.unique(), gdf.result_citycode.unique()
+        communes[code_col].unique(), gdf["result_citycode"].unique()
     ):
         multipolygons_communes_dict[cp] = communes[
-            communes.result_citycode == cp
+            communes[code_col] == cp
         ].geometry.unary_union
     # align the precomputed MultiPolygons with the input GeoDataFrame `gdf`
     for _, row in gdf_copy.iterrows():
@@ -298,13 +310,17 @@ def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         if len(gdf_city) >= 3:
             points_city, id_bvs_city = [], []
             for k in gdf_city.index:
-                points_city.append(
-                    (
-                        gdf_city.geometry[k].coords.xy[0][0],
-                        gdf_city.geometry[k].coords.xy[1][0],
+                try:
+                    points_city.append(
+                        (
+                            gdf_city.geometry[k].coords.xy[0][0],
+                            gdf_city.geometry[k].coords.xy[1][0],
+                        )
                     )
-                )
-                id_bvs_city.append(gdf_city.id_bv[k])
+                    id_bvs_city.append(gdf_city.id_bv[k])
+                except:
+                    pass
+
             # the condition "if k" exclude the corner of bounding box from the pytess.voronoi output
             # the size of 'buffer_percent' defines the size of the virtual bounding box we compute Voronoi in
             #  pytess.voronoi returns a list of 2-tuples, with the first item in each tuple being the original input point (or None for each corner of the bounding box buffer), and the second item being the point's corressponding Voronoi polygon.
@@ -322,7 +338,7 @@ def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
                     except:
                         polygons_city.append(None)
             id_bvs.extend(id_bvs_city)
-            citycodes.extend([citycode] * len(gdf_city))
+            citycodes.extend([citycode] * len(id_bvs_city))
             polygons.extend(polygons_city)
 
     return gpd.GeoDataFrame(

@@ -21,12 +21,20 @@ def prepare_layer_communes(communes: gpd.GeoDataFrame, filled=True) -> pdk.Layer
         pdk.Layer: a pydeck Layer with the polygonal shapes of the communes
     """
     assert (
-        "result_citycode" in communes.columns
-    ), "the city code must be given, in order to associate deterministic colours to communes"
-    displayed = communes.copy().astype({"result_citycode": int})
-    displayed["color_r"] = 7 * displayed["result_citycode"] % 255
-    displayed["color_g"] = 23 * displayed["result_citycode"] % 255
-    displayed["color_b"] = 67 * displayed["result_citycode"] % 255
+        "result_citycode" in communes.columns or "insee" in communes.columns
+    ), "the code commune must be given, in order to associate deterministic colours to communes"
+    if "result_citycode" in communes.columns:
+        col = "result_citycode"
+    else:
+        col = "insee"
+    displayed = communes.copy()
+    # Corsica: remove "a" and "b" in code commune
+    corsica_mask = displayed[col].str.contains("a|b|A|B", regex=True)
+    displayed[col] = displayed[col].str.split("a|b", regex=True, expand=True)
+    displayed = displayed.astype({col: int})
+    displayed["color_r"] = 7 * displayed[col] % 255
+    displayed["color_g"] = 23 * displayed[col] % 255
+    displayed["color_b"] = 67 * displayed[col] % 255
 
     coordinates = []
     for _, row in displayed.iterrows():
@@ -74,18 +82,7 @@ def prepare_layer_addresses(df: pd.DataFrame) -> pdk.Layer:
     Returns:
         pdk.Layer: every input address is figured with a point on the map
     """
-    data = df[
-        [
-            "longitude",
-            "latitude",
-            "id_bv",
-            "result_score",
-            "result_label",
-            "result_citycode",
-            "adr_complete",
-            "Commune",
-        ]
-    ].copy()
+    data = df.copy()
     data["radius"] = 6
     data["coordinates"] = np.array(df[["longitude", "latitude"]]).tolist()
     #    NB: 7, 23 and 67 are coprime with 255. That implies two voting places in the same city will have the same colors if and only if their id_bv modulo 255 are the same. Moreover, two successive voting places will have rather different colors.
@@ -223,17 +220,21 @@ def display_addresses(
 
     # Set the viewport location
     view_state = pdk.ViewState(
-        latitude=43.055403, longitude=1.470104, zoom=8, bearing=0, pitch=0
+        latitude=43.055403, longitude=1.470104, zoom=6, bearing=0, pitch=0
     )
+    legend = ""
+    for col in ["id_bv", "result_score", "result_label", "adr_complete", "Commune"]:
+        legend += "{"+f"{col}"+"} \n" 
+    tooltip = {
+        "text": legend
+    }
 
     # Render
     return pdk.Deck(
         map_style="light",
         layers=layers,
         initial_view_state=view_state,
-        tooltip={
-            "text": "{id_bv} \n{result_score}\n{result_label}\n{adr_complete} {Commune}"
-        },
+        tooltip=tooltip,
     )
 
 
@@ -275,14 +276,18 @@ def display_bureau_vote_shapes(
 
     # Set the viewport location
     view_state = pdk.ViewState(
-        latitude=43.055403, longitude=1.470104, zoom=8, bearing=0, pitch=0
+        latitude=43.055403, longitude=1.470104, zoom=6, bearing=0, pitch=0
     )
+    legend = ""
+    for col in ["id_bv", "result_score", "result_label", "adr_complete", "Commune"]:
+        legend += "{"+f"{col}"+"} \n" 
+    tooltip = {
+        "text": legend
+    }
     # Render
     return pdk.Deck(
         map_style="light",
         layers=layers,
         initial_view_state=view_state,
-        tooltip={
-            "text": "id_bv:{id_bv} \n{result_score}\n{result_label}\n{adr_complete} {Commune}"
-        },
+        tooltip=tooltip,
     )
