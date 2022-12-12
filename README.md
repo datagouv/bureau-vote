@@ -6,11 +6,11 @@ Il s'agit d'un des dépôts de travail en vue de la publication en open data des
 
 ## Visualisation sur un fond de carte du fichier des adresses déjà géocodés, pour n'importe quel département
 
-Déposer les fichiers sources de données à la racine du dépôt, modifier si utile le code en indiquant à la fois le chemin du fichier des adresses et le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
+Déposer les fichiers sources de données à la racine du dépôt, modifier si utile le code en indiquant à la fois le chemin du fichier des adresses et le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), indiquer le  créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
 
 ```
 python3.10 install -r requirements.txt
-python3.10 -m pip main_atelier.py
+python3.10 main_atelier.py
 ```
 
 ## Nettoyage, géocodage, visualisation du fichier des adresses, et essais de contours non officiels, pour le département de l'Ariège.
