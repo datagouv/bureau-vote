@@ -9,7 +9,7 @@ Il s'agit d'un des dépôts de travail en vue de la publication en open data des
 Déposer les fichiers sources de données à la racine du dépôt, modifier si utile le code en indiquant à la fois le chemin du fichier des adresses et le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), indiquer le  créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
 
 ```
-python3.10 install -r requirements.txt
+python3.10 -m pip install -r requirements.txt
 python3.10 main_atelier.py
 ```
 
@@ -25,8 +25,8 @@ python3.10 main_atelier.py
 Déposer ces fichiers de données à la racine du dépôt, modifier si utile le code en indiquant le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
 
 ```
-python3.10 install -r requirements.txt
-python3.10 -m pip main.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
+python3.10 -m pip install -r requirements.txt
+python3.10 main.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
 ```
 
 
