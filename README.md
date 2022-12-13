@@ -4,8 +4,16 @@ Ce dépôt comprend à la fois du code en langage Python permettant de nettoyer 
 
 Il s'agit d'un des dépôts de travail en vue de la publication en open data des adresses du Répertoire Electoral Unique, qui n'a pas vocation à être maintenu à l'issue de la diffusion du fichier.
 
+## Visualisation sur un fond de carte du fichier des adresses déjà géocodés, pour n'importe quel département
 
-## Nettoyage, géocodage et visualisation du fichier des adresses pour le département de l'Ariège.
+Déposer les fichiers sources de données à la racine du dépôt, modifier si utile le code en indiquant à la fois le chemin du fichier des adresses et le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), indiquer le  créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
+
+```
+python3.10 -m pip install -r requirements.txt
+python3.10 main_atelier.py
+```
+
+## Nettoyage, géocodage, visualisation du fichier des adresses, et essais de contours non officiels, pour le département de l'Ariège.
 
 ### Données nécessaires
 
@@ -17,18 +25,10 @@ Il s'agit d'un des dépôts de travail en vue de la publication en open data des
 Déposer ces fichiers de données à la racine du dépôt, modifier si utile le code en indiquant le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
 
 ```
-python3.10 install -r requirements.txt
-python3.10 -m pip main.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
+python3.10 -m pip install -r requirements.txt
+python3.10 main.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
 ```
 
-## Visualisation sur un fond de carte du fichier 
-
-Déposer les fichiers sources de données à la racine du dépôt, modifier si utile le code en indiquant le chemin du fichier de contour des communes (dans notre cas,communes-20220101.shp), créer un environnement virtuel Python3.10 (pratique non nécessaire mais recommandée) puis lancer les commandes :
-
-```
-python3.10 install -r requirements.txt
-python3.10 -m pip main_atelier.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
-```
 
 ## Maintenance du dépôt
 
