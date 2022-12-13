@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 import geo
-
+from typing import Dict, List
 
 def prepare_layer_communes(communes: gpd.GeoDataFrame, filled=True) -> pdk.Layer:
     """
@@ -199,6 +199,26 @@ def prepare_layer_polygons(
     )
 
 
+def prepare_tooltip(columns: List[str]) -> Dict:
+    """
+    Prepare a tooltip indicating a specific subset of columns
+
+    Args:
+        columns (List[str]): a list of columns of the data
+
+    Returns:
+        Dict: _description_
+    """
+    legend = ""
+    for col in ["id_bv", "result_score", "geo_score", "commune_bv", "geo_adresse" "result_label", "adr_complete", "Commune"]:
+        if col in columns:
+            legend += f"{col}: "+"{"+f"{col}"+"} \n" 
+    tooltip = {
+        "text": legend
+    }
+    return tooltip
+
+
 def display_addresses(
     addresses: pd.DataFrame, communes: gpd.GeoDataFrame = gpd.GeoDataFrame()
 ) -> pdk.Deck:
@@ -222,19 +242,13 @@ def display_addresses(
     view_state = pdk.ViewState(
         latitude=43.055403, longitude=1.470104, zoom=6, bearing=0, pitch=0
     )
-    legend = ""
-    for col in ["id_bv", "result_score", "result_label", "adr_complete", "Commune"]:
-        legend += "{"+f"{col}"+"} \n" 
-    tooltip = {
-        "text": legend
-    }
 
     # Render
     return pdk.Deck(
         map_style="light",
         layers=layers,
         initial_view_state=view_state,
-        tooltip=tooltip,
+        tooltip=prepare_tooltip(addresses.columns),
     )
 
 
@@ -278,16 +292,10 @@ def display_bureau_vote_shapes(
     view_state = pdk.ViewState(
         latitude=43.055403, longitude=1.470104, zoom=6, bearing=0, pitch=0
     )
-    legend = ""
-    for col in ["id_bv", "result_score", "result_label", "adr_complete", "Commune"]:
-        legend += "{"+f"{col}"+"} \n" 
-    tooltip = {
-        "text": legend
-    }
     # Render
     return pdk.Deck(
         map_style="light",
         layers=layers,
         initial_view_state=view_state,
-        tooltip=tooltip,
+        tooltip=prepare_tooltip(addresses.columns),
     )
