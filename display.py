@@ -210,7 +210,7 @@ def prepare_tooltip(columns: List[str]) -> Dict:
         Dict: _description_
     """
     legend = ""
-    for col in ["id_bv", "result_score", "geo_score", "commune_bv", "geo_adresse" "result_label", "adr_complete", "Commune"]:
+    for col in ["id_bv", "result_score", "geo_score", "commune_bv", "geo_adresse", "result_label", "adr_complete", "Commune"]:
         if col in columns:
             legend += f"{col}: "+"{"+f"{col}"+"} \n" 
     tooltip = {
