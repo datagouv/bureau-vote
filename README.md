@@ -28,10 +28,3 @@ Déposer ces fichiers de données à la racine du dépôt, modifier si utile le 
 python3.10 -m pip install -r requirements.txt
 python3.10 main.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
 ```
-
-
-## Maintenance du dépôt
-
-La maitenance de ce dépôt de travail est assurée par l'équipe Lab IA de la Direction Interministérielle du Numérique (DINUM) :
-
-lab-ia@data.gouv.fr
