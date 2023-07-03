@@ -7,7 +7,8 @@ import numpy as np
 import geopandas as gpd
 import pytess
 from typing import List
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
+from shapely import make_valid
 import requests
 
 
@@ -165,10 +166,37 @@ def clip_to_communes(
     for _, row in gdf_copy.iterrows():
         cp = row["result_citycode"]
         multipolygons_communes_list.append(multipolygons_communes_dict[cp])
-    # and now clip the geometries!
-    gdf_copy.geometry = gdf_copy.geometry.intersection(
-        gpd.GeoSeries(multipolygons_communes_list), align=False
-    )
+    to_intersect = gpd.GeoSeries(multipolygons_communes_list)
+    try:
+        gdf_copy.geometry = gdf_copy.geometry.intersection(
+            to_intersect, align=False
+        )
+    except:
+        # handling self-intersection cases
+        for k in range(len(gdf_copy)):
+            try:
+                # for rows where intersection works fine
+                gdf_copy.loc[k:k,'geometry'] = gdf_copy.loc[k:k,'geometry'].intersection(
+                    to_intersect.loc[k:k],
+                    align=False
+                )
+            except:
+                # removing points that are too close together to resolve the Polygon
+                try:
+                    gdf_copy.loc[k:k,'geometry'] = gpd.GeoSeries(
+                            gdf_copy.loc[k:k,'geometry'].values[0].simplify(tolerance=1)
+                        ).intersection(
+                            gpd.GeoSeries(to_intersect.loc[k:k].values[0].simplify(tolerance=1)),
+                            align=False
+                        )
+                except:
+                    # use make_valid to restore geometry
+                    gdf_copy.loc[k:k,'geometry'] = gpd.GeoSeries(
+                            make_valid(gdf_copy.loc[k:k,'geometry'].values[0].simplify(tolerance=1))
+                        ).intersection(
+                            gpd.GeoSeries(make_valid(to_intersect.loc[k:k].values[0].simplify(tolerance=1))),
+                            align=False
+                        )
     return gdf_copy
 
 
@@ -221,8 +249,7 @@ def get_clipped_voronoi_shapes(
     Returns:
         gpd.GeoDataFrame:
     """
-
-    hulls = voronoi_hull(gdf)
+    hulls = voronoi_hull(gdf, communes)
     if len(communes):
         hulls = clip_to_communes(hulls, communes)
     return connected_components_polygon_union(hulls)
@@ -264,27 +291,28 @@ def connected_components_polygon_union(
         s = gdf[
             gdf[pivot_column] == pivot
         ].geometry  # normally these shapes are Polygon, but could be Point if there is only one found voter in a bureau de vote
-        if len(s) == 1 and s.iloc[0].type == "Point":
+        if len(s) == 1 and s.iloc[0].geom_type == "Point":
             geometries.append(s)
             save_columns_values(pivot)
         else:
             merged_shape = s.unary_union
-            if merged_shape.type == "Polygon":
-                geometries.append(merged_shape)
-                save_columns_values(pivot)
-
-            elif merged_shape.type == "MultiPolygon":
-                for _, row in (
-                    gpd.GeoDataFrame(geometry=[merged_shape])
-                    .explode(index_parts=False)
-                    .iterrows()
-                ):
-                    geometries.append(row["geometry"])
+            if merged_shape is not None:
+                if merged_shape.geom_type == "Polygon":
+                    geometries.append(merged_shape)
                     save_columns_values(pivot)
+
+                elif merged_shape.geom_type == "MultiPolygon":
+                    for _, row in (
+                        gpd.GeoDataFrame(geometry=[merged_shape])
+                        .explode(index_parts=False)
+                        .iterrows()
+                    ):
+                        geometries.append(row["geometry"])
+                        save_columns_values(pivot)
     return gpd.GeoDataFrame(geometry=geometries, data=data)
 
 
-def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def voronoi_hull(gdf: gpd.GeoDataFrame, communes: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Compute voronoi cells around each of the input addresses, within an arbitrary large bounding box (hence, it is useful to clip afterwards the cells on limits relevant to our use cases)
     It is a based on the voronoi method implemented in the library pytess
@@ -305,9 +333,21 @@ def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     gdf_copy.drop_duplicates(
         subset=["geometry"], inplace=True
     )  # delete duplicates of geolocated points
-    for citycode in gdf_copy.result_citycode.unique():
+    # on s'assure de parcourir toutes les communes, certaines sont absentes des adresses
+    for citycode in set(gdf_copy.result_citycode.unique()) | set(communes.insee.unique()):
         gdf_city = gdf_copy[gdf_copy.result_citycode == citycode]
-        if len(gdf_city) >= 3:
+        # rares cas sans aucune adresse de votant sur la commune
+        if len(gdf_city) == 0:
+            id_bvs.append(citycode+'_X')
+            citycodes.append(citycode)
+            polygons.append(communes.loc[communes['insee']==citycode, 'geometry'].values[0])
+        # un seul BdV dans la commune : le contour sera celui de la commune
+        elif gdf_city['id_bv'].nunique() == 1:
+            id_bvs.append(gdf_city['id_bv'].values[0])
+            citycodes.append(citycode)
+            polygons.append(communes.loc[communes['insee']==citycode, 'geometry'].values[0])
+        # cas général
+        elif len(gdf_city) >= 3:
             points_city, id_bvs_city = [], []
             for k in gdf_city.index:
                 try:
@@ -323,10 +363,10 @@ def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
             # the condition "if k" exclude the corner of bounding box from the pytess.voronoi output
             # the size of 'buffer_percent' defines the size of the virtual bounding box we compute Voronoi in
-            #  pytess.voronoi returns a list of 2-tuples, with the first item in each tuple being the original input point (or None for each corner of the bounding box buffer), and the second item being the point's corressponding Voronoi polygon.
+            # pytess.voronoi returns a list of 2-tuples, with the first item in each tuple being the original input point (or None for each corner of the bounding box buffer), and the second item being the point's corressponding Voronoi polygon.
 
             voronoi_city_dict = {
-                k: v for (k, v) in pytess.voronoi(points_city, buffer_percent=600) if k
+                k: v for (k, v) in pytess.voronoi(points_city, buffer_percent=1000) if k
             }
             polygons_city = []
             if (
@@ -341,6 +381,45 @@ def voronoi_hull(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             citycodes.extend([citycode] * len(id_bvs_city))
             polygons.extend(polygons_city)
 
+        # handling one known case : two points in one commune (due to bad geocoding), from two different BdV
+        # creating big triangles along the bisection between the two points, that will be cropped later to the commune's contours
+        elif len(gdf_city) == 2:
+            size = 10e6
+            middle_point = Point(
+                (gdf_city['geometry'].values[0].coords.xy[0][0] + gdf_city['geometry'].values[1].coords.xy[0][0])/2,
+                (gdf_city['geometry'].values[0].coords.xy[1][0] + gdf_city['geometry'].values[1].coords.xy[1][0])/2
+            )
+            for k in range(2):
+                point2middle_vector = [
+                    middle_point.coords.xy[0][0] - gdf_city['geometry'].values[k].coords.xy[0][0],
+                    middle_point.coords.xy[1][0] - gdf_city['geometry'].values[k].coords.xy[1][0]
+                ]
+                orthogonal_vector = [
+                    -point2middle_vector[1],
+                    point2middle_vector[0]
+                ]
+                accross_point = Point(
+                    gdf_city['geometry'].values[k].coords.xy[0][0] +
+                    size*point2middle_vector[0],
+                    gdf_city['geometry'].values[k].coords.xy[1][0] +
+                    size*point2middle_vector[1]
+                )
+                other_point1 = Point(
+                    middle_point.coords.xy[0][0] +
+                    size*orthogonal_vector[0],
+                    middle_point.coords.xy[1][0] +
+                    size*orthogonal_vector[1],
+                )
+                other_point2 = Point(
+                    middle_point.coords.xy[0][0] -
+                    size*orthogonal_vector[0],
+                    middle_point.coords.xy[1][0] -
+                    size*orthogonal_vector[1],
+                )
+                id_bvs.append(gdf_city['id_bv'].values[k])
+                citycodes.append(citycode)
+                polygons.append(Polygon([accross_point, other_point1, other_point2]))
+                
     return gpd.GeoDataFrame(
         geometry=polygons, data={"id_bv": id_bvs, "result_citycode": citycodes}
     )
