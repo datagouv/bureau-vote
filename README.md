@@ -42,4 +42,3 @@ Déposer ces fichiers de données à la racine du dépôt, modifier si utile le 
 python3.10 -m pip install -r requirements.txt
 python3.10 main.py <NOM_FICHIER_SOURCE_ADRESSES_REU>
 ```
-
