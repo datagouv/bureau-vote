@@ -1,4 +1,4 @@
-geopandas==0.12.0
+geopandas==0.14.3
 pygeos==0.13
 numpy==1.22.3
 pandas==1.5.0
